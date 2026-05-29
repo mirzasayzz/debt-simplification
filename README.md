@@ -1,5 +1,7 @@
 # Debt Simplification / Cash Flow Minimizer
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Interactive_Web_UI-violet?style=for-the-badge&logo=github)](https://mirzasayzz.github.io/debt-simplification/)
+
 This project implements an optimized debt simplifier (similar to Splitwise). It includes:
 1. A high-performance **C++ library and command-line tool**.
 2. A gorgeous, interactive **web-based User Interface** that runs the exact same algorithms in JavaScript.
