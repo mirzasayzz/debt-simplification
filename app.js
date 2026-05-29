@@ -94,10 +94,7 @@ const logContainer = document.getElementById('log-container');
 
 // Simulator DOM Elements
 const sectionSimulator = document.getElementById('section-simulator');
-const btnSimPrev = document.getElementById('btn-sim-prev');
-const btnSimPlay = document.getElementById('btn-sim-play');
-const btnSimNext = document.getElementById('btn-sim-next');
-const btnSimReset = document.getElementById('btn-sim-reset');
+const btnSimAction = document.getElementById('btn-sim-action');
 const simStepText = document.getElementById('sim-step-text');
 const simDebtorName = document.getElementById('sim-debtor-name');
 const simDebtorBal = document.getElementById('sim-debtor-bal');
@@ -112,7 +109,6 @@ let simTransfers = [];
 let simActiveNames = [];
 let simActiveBalances = [];
 let simCurrentStep = 0;
-let simPlayInterval = null;
 
 const sectionTransfers = document.getElementById('section-transfers');
 const transfersList = document.getElementById('transfers-list');
@@ -229,7 +225,6 @@ function hideResultSections() {
     sectionLog.style.display = 'none';
     sectionSimulator.style.display = 'none';
     sectionTransfers.style.display = 'none';
-    stopSimPlayback();
 }
 
 function logStep(message, type = 'info') {
@@ -577,14 +572,12 @@ function initSimulator(transfers, activeNames, activeBalances) {
     simActiveBalances = [...activeBalances];
     simCurrentStep = 0;
     
-    stopSimPlayback();
-    btnSimPlay.textContent = 'Play';
-
     if (transfers.length === 0) {
         sectionSimulator.style.display = 'none';
         return;
     }
 
+    btnSimAction.textContent = transfers.length > 1 ? 'Next Step' : 'Reset Simulation';
     sectionSimulator.style.display = 'block';
     renderSimulationStep();
 }
@@ -656,53 +649,27 @@ function renderSimulationStep() {
     }, 750);
 }
 
-function startSimPlayback() {
-    if (simPlayInterval) return;
-    btnSimPlay.textContent = 'Pause';
-    btnSimPlay.classList.remove('btn-primary');
-    btnSimPlay.classList.add('btn-secondary');
+// Single Action Button click handler
+btnSimAction.addEventListener('click', () => {
+    if (simTransfers.length === 0) return;
     
-    // Play immediately, then every 2.5s
-    renderSimulationStep();
-    simPlayInterval = setInterval(() => {
-        simCurrentStep = (simCurrentStep + 1) % simTransfers.length;
+    if (btnSimAction.textContent === 'Reset Simulation') {
+        simCurrentStep = 0;
+        btnSimAction.textContent = simTransfers.length > 1 ? 'Next Step' : 'Reset Simulation';
         renderSimulationStep();
-    }, 2500);
-}
-
-function stopSimPlayback() {
-    if (simPlayInterval) {
-        clearInterval(simPlayInterval);
-        simPlayInterval = null;
+        return;
     }
-    btnSimPlay.textContent = 'Play';
-    btnSimPlay.classList.remove('btn-secondary');
-    btnSimPlay.classList.add('btn-primary');
-}
-
-// Event Listeners for Simulator Controls
-btnSimPlay.addEventListener('click', () => {
-    if (simPlayInterval) {
-        stopSimPlayback();
+    
+    simCurrentStep++;
+    if (simCurrentStep >= simTransfers.length) {
+        simCurrentStep = simTransfers.length - 1; // hold at last step
+        simExplanation.innerHTML = `<strong>All debts are fully settled!</strong><br><small>Click Reset to watch the simulation again.</small>`;
+        btnSimAction.textContent = 'Reset Simulation';
+        simMoneyIcon.classList.remove('animate');
     } else {
-        startSimPlayback();
+        renderSimulationStep();
+        if (simCurrentStep === simTransfers.length - 1) {
+            btnSimAction.textContent = 'Reset Simulation';
+        }
     }
-});
-
-btnSimNext.addEventListener('click', () => {
-    stopSimPlayback();
-    simCurrentStep = (simCurrentStep + 1) % simTransfers.length;
-    renderSimulationStep();
-});
-
-btnSimPrev.addEventListener('click', () => {
-    stopSimPlayback();
-    simCurrentStep = (simCurrentStep - 1 + simTransfers.length) % simTransfers.length;
-    renderSimulationStep();
-});
-
-btnSimReset.addEventListener('click', () => {
-    stopSimPlayback();
-    simCurrentStep = 0;
-    renderSimulationStep();
 });
