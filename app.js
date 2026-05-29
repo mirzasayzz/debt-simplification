@@ -96,19 +96,16 @@ const logContainer = document.getElementById('log-container');
 const sectionSimulator = document.getElementById('section-simulator');
 const btnSimAction = document.getElementById('btn-sim-action');
 const simStepText = document.getElementById('sim-step-text');
-const simDebtorName = document.getElementById('sim-debtor-name');
-const simDebtorBal = document.getElementById('sim-debtor-bal');
-const simCreditorName = document.getElementById('sim-creditor-name');
-const simCreditorBal = document.getElementById('sim-creditor-bal');
-const simMoneyIcon = document.getElementById('sim-money-icon');
-const simAmountLabel = document.getElementById('sim-amount-label');
+const simGrid = document.getElementById('sim-grid');
 const simExplanation = document.getElementById('sim-explanation');
+const simulatorView = document.querySelector('.simulator-view');
 
 // Simulator State
 let simTransfers = [];
 let simActiveNames = [];
 let simActiveBalances = [];
-let simCurrentStep = 0;
+let simRunningBalances = [];
+let simCurrentStep = -1;
 
 const sectionTransfers = document.getElementById('section-transfers');
 const transfersList = document.getElementById('transfers-list');
@@ -570,6 +567,7 @@ function initSimulator(transfers, activeNames, activeBalances) {
     simTransfers = transfers;
     simActiveNames = [...activeNames];
     simActiveBalances = [...activeBalances];
+    simRunningBalances = [...activeBalances];
     simCurrentStep = 0;
     
     if (transfers.length === 0) {
@@ -577,76 +575,185 @@ function initSimulator(transfers, activeNames, activeBalances) {
         return;
     }
 
-    btnSimAction.textContent = transfers.length > 1 ? 'Next Step' : 'Reset Simulation';
+    btnSimAction.textContent = 'Next Step';
+    btnSimAction.disabled = false;
     sectionSimulator.style.display = 'block';
-    renderSimulationStep();
+    
+    simStepText.textContent = `Ready to simulate (${transfers.length} step${transfers.length === 1 ? '' : 's'})`;
+    simExplanation.innerHTML = `Click <strong>Next Step</strong> to watch the payment simulation.`;
+    
+    renderSimulationGrid();
+}
+
+function renderSimulationGrid() {
+    simGrid.innerHTML = '';
+    
+    // Sort names alphabetically to keep card layout stable and consistent
+    const sortedActive = simActiveNames.map((name, idx) => ({
+        name,
+        idx
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    sortedActive.forEach(item => {
+        const bal = simRunningBalances[item.idx];
+        const card = document.createElement('div');
+        card.className = 'sim-card';
+        card.setAttribute('data-name', item.name);
+        
+        let colorClass = 'sim-card-settled';
+        let displayBal = '₹0';
+        let badgeHtml = '<span class="sim-card-badge settled-badge">Settled ✓</span>';
+        
+        if (bal < 0) {
+            colorClass = 'sim-card-debtor';
+            displayBal = `-₹${-bal}`;
+            badgeHtml = '<span class="sim-card-badge debtor-badge">Owes</span>';
+        } else if (bal > 0) {
+            colorClass = 'sim-card-creditor';
+            displayBal = `+₹${bal}`;
+            badgeHtml = '<span class="sim-card-badge creditor-badge">Owed</span>';
+        }
+        
+        card.classList.add(colorClass);
+        card.innerHTML = `
+            <div class="sim-card-title" title="${item.name}">${item.name}</div>
+            <div class="sim-card-val">${displayBal}</div>
+            <div class="sim-card-status">${badgeHtml}</div>
+        `;
+        
+        simGrid.appendChild(card);
+    });
+}
+
+function updateCardVisual(name, newBalance) {
+    const card = document.querySelector(`.sim-card[data-name="${name}"]`);
+    if (!card) return;
+    
+    // Reset all status classes
+    card.classList.remove('sim-card-debtor', 'sim-card-creditor', 'sim-card-settled');
+    
+    const valEl = card.querySelector('.sim-card-val');
+    const statusEl = card.querySelector('.sim-card-status');
+    
+    let colorClass = 'sim-card-settled';
+    let displayBal = '₹0';
+    let badgeHtml = '<span class="sim-card-badge settled-badge">Settled ✓</span>';
+    
+    if (newBalance < 0) {
+        colorClass = 'sim-card-debtor';
+        displayBal = `-₹${-newBalance}`;
+        badgeHtml = '<span class="sim-card-badge debtor-badge">Owes</span>';
+    } else if (newBalance > 0) {
+        colorClass = 'sim-card-creditor';
+        displayBal = `+₹${newBalance}`;
+        badgeHtml = '<span class="sim-card-badge creditor-badge">Owed</span>';
+    }
+    
+    card.classList.add(colorClass);
+    if (valEl) valEl.textContent = displayBal;
+    if (statusEl) statusEl.innerHTML = badgeHtml;
 }
 
 function renderSimulationStep() {
-    if (simTransfers.length === 0) return;
+    if (simTransfers.length === 0 || simCurrentStep >= simTransfers.length) return;
     
-    const currentStep = simCurrentStep;
-    simStepText.textContent = `Step ${currentStep + 1} of ${simTransfers.length}`;
-
-    // Restart coin animation
-    simMoneyIcon.classList.remove('animate');
-    void simMoneyIcon.offsetWidth; // Force reflow
-    simMoneyIcon.classList.add('animate');
-
-    const tx = simTransfers[currentStep];
+    const tx = simTransfers[simCurrentStep];
+    simStepText.textContent = `Step ${simCurrentStep + 1} of ${simTransfers.length}`;
     
-    // Calculate balances BEFORE this transaction
-    const tempBals = [...simActiveBalances];
-    for (let j = 0; j < currentStep; ++j) {
-        const prevTx = simTransfers[j];
-        const prevDebtorIdx = simActiveNames.indexOf(prevTx.from);
-        const prevCreditorIdx = simActiveNames.indexOf(prevTx.to);
-        tempBals[prevDebtorIdx] += prevTx.amount;
-        tempBals[prevCreditorIdx] -= prevTx.amount;
+    // Disable action button to prevent click spamming during animation
+    btnSimAction.disabled = true;
+
+    // Remove any previous highlights
+    document.querySelectorAll('.sim-card').forEach(card => {
+        card.classList.remove('sim-active-debtor', 'sim-active-creditor');
+    });
+
+    const debtorCard = document.querySelector(`.sim-card[data-name="${tx.from}"]`);
+    const creditorCard = document.querySelector(`.sim-card[data-name="${tx.to}"]`);
+
+    if (!debtorCard || !creditorCard) {
+        // Fallback if cards not found
+        btnSimAction.disabled = false;
+        return;
     }
 
-    const debtorIdx = simActiveNames.indexOf(tx.from);
-    const creditorIdx = simActiveNames.indexOf(tx.to);
+    debtorCard.classList.add('sim-active-debtor');
+    creditorCard.classList.add('sim-active-creditor');
 
-    const balDebtorBefore = tempBals[debtorIdx];
-    const balCreditorBefore = tempBals[creditorIdx];
+    // Get positions relative to .simulator-view container
+    const viewRect = simulatorView.getBoundingClientRect();
+    const debtorRect = debtorCard.getBoundingClientRect();
+    const creditorRect = creditorCard.getBoundingClientRect();
 
-    const balDebtorAfter = balDebtorBefore + tx.amount;
-    const balCreditorAfter = balCreditorBefore - tx.amount;
+    const startX = debtorRect.left - viewRect.left + debtorRect.width / 2;
+    const startY = debtorRect.top - viewRect.top + debtorRect.height / 2;
+    const endX = creditorRect.left - viewRect.left + creditorRect.width / 2;
+    const endY = creditorRect.top - viewRect.top + creditorRect.height / 2;
 
-    // Display values before payment
-    simDebtorName.textContent = tx.from;
-    simDebtorBal.textContent = `₹${balDebtorBefore}`;
-    
-    simCreditorName.textContent = tx.to;
-    simCreditorBal.textContent = `₹${balCreditorBefore}`;
-    
-    simAmountLabel.textContent = `₹${tx.amount}`;
-    
-    simExplanation.innerHTML = `<span class="transfer-payee">${tx.from}</span> is transferring <span class="transfer-val">₹${tx.amount}</span> to <span class="transfer-rec">${tx.to}</span>...`;
+    // Create the flying coin element
+    const coin = document.createElement('div');
+    coin.className = 'flying-coin';
+    coin.textContent = '💸';
+    coin.style.left = startX + 'px';
+    coin.style.top = startY + 'px';
+    simulatorView.appendChild(coin);
 
-    // Dynamic balance updates half-way through the animation (750ms)
+    simExplanation.innerHTML = `💸 <strong>${tx.from}</strong> is sending <strong>₹${tx.amount}</strong> to <strong>${tx.to}</strong>...`;
+
+    // Trigger transition after rendering
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            coin.style.left = endX + 'px';
+            coin.style.top = endY + 'px';
+        });
+    });
+
+    // Update balances and card state at the end of the transition (850ms)
     setTimeout(() => {
-        if (simCurrentStep === currentStep) {
-            simDebtorBal.textContent = `₹${balDebtorAfter}`;
-            simCreditorBal.textContent = `₹${balCreditorAfter}`;
-            
-            let statusText = '';
-            if (balDebtorAfter === 0) {
-                statusText += `<span class="transfer-payee">${tx.from}</span> is now <strong>fully settled</strong>. `;
-            } else {
-                statusText += `<span class="transfer-payee">${tx.from}</span>'s remaining debt is reduced to ₹${-balDebtorAfter}. `;
-            }
+        // Remove coin element
+        coin.remove();
 
-            if (balCreditorAfter === 0) {
-                statusText += `<span class="transfer-rec">${tx.to}</span> is now <strong>fully paid</strong>.`;
-            } else {
-                statusText += `<span class="transfer-rec">${tx.to}</span> is owed ₹${balCreditorAfter} more.`;
-            }
+        const debtorIdx = simActiveNames.indexOf(tx.from);
+        const creditorIdx = simActiveNames.indexOf(tx.to);
 
-            simExplanation.innerHTML = `<span class="transfer-payee">${tx.from}</span> paid <span class="transfer-rec">${tx.to}</span> <span class="transfer-val">₹${tx.amount}</span>!<br><small>${statusText}</small>`;
+        const oldDebtorBal = simRunningBalances[debtorIdx];
+        const oldCreditorBal = simRunningBalances[creditorIdx];
+
+        simRunningBalances[debtorIdx] += tx.amount;
+        simRunningBalances[creditorIdx] -= tx.amount;
+
+        const newDebtorBal = simRunningBalances[debtorIdx];
+        const newCreditorBal = simRunningBalances[creditorIdx];
+
+        // Update card visual elements in place
+        updateCardVisual(tx.from, newDebtorBal);
+        updateCardVisual(tx.to, newCreditorBal);
+
+        // Build status details
+        let outcomeMsg = `<strong>${tx.from}</strong> paid <strong>₹${tx.amount}</strong> to <strong>${tx.to}</strong>!<br><small>`;
+        
+        if (newDebtorBal === 0) {
+            outcomeMsg += `🎉 <strong>${tx.from}</strong> is now fully settled (₹0 balance)!<br>`;
+        } else {
+            outcomeMsg += `• <strong>${tx.from}</strong>'s remaining debt: ₹${-oldDebtorBal} &rarr; ₹${-newDebtorBal}.<br>`;
         }
-    }, 750);
+
+        if (newCreditorBal === 0) {
+            outcomeMsg += `🎉 <strong>${tx.to}</strong> is now fully paid (₹0 balance)!`;
+        } else {
+            outcomeMsg += `• <strong>${tx.to}</strong>'s remaining credit: +₹${oldCreditorBal} &rarr; +₹${newCreditorBal}.`;
+        }
+        outcomeMsg += `</small>`;
+
+        simExplanation.innerHTML = outcomeMsg;
+        btnSimAction.disabled = false;
+        
+        simCurrentStep++;
+        if (simCurrentStep >= simTransfers.length) {
+            btnSimAction.textContent = 'Reset Simulation';
+            simExplanation.innerHTML += `<br><strong>All debts are fully settled!</strong> <small>Click Reset to watch again.</small>`;
+        }
+    }, 850);
 }
 
 // Single Action Button click handler
@@ -655,21 +762,20 @@ btnSimAction.addEventListener('click', () => {
     
     if (btnSimAction.textContent === 'Reset Simulation') {
         simCurrentStep = 0;
-        btnSimAction.textContent = simTransfers.length > 1 ? 'Next Step' : 'Reset Simulation';
-        renderSimulationStep();
+        simRunningBalances = [...simActiveBalances];
+        btnSimAction.textContent = 'Next Step';
+        
+        // Remove highlights
+        document.querySelectorAll('.sim-card').forEach(card => {
+            card.classList.remove('sim-active-debtor', 'sim-active-creditor');
+        });
+
+        renderSimulationGrid();
+        
+        simStepText.textContent = `Ready to simulate (${simTransfers.length} step${simTransfers.length === 1 ? '' : 's'})`;
+        simExplanation.innerHTML = `Click <strong>Next Step</strong> to watch the payment simulation.`;
         return;
     }
     
-    simCurrentStep++;
-    if (simCurrentStep >= simTransfers.length) {
-        simCurrentStep = simTransfers.length - 1; // hold at last step
-        simExplanation.innerHTML = `<strong>All debts are fully settled!</strong><br><small>Click Reset to watch the simulation again.</small>`;
-        btnSimAction.textContent = 'Reset Simulation';
-        simMoneyIcon.classList.remove('animate');
-    } else {
-        renderSimulationStep();
-        if (simCurrentStep === simTransfers.length - 1) {
-            btnSimAction.textContent = 'Reset Simulation';
-        }
-    }
+    renderSimulationStep();
 });

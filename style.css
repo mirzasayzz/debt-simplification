@@ -574,116 +574,99 @@ body {
 }
 
 /* Simulator Styles */
-.sim-controls {
-    display: flex;
-    gap: 0.25rem;
-}
-
 .simulator-view {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    position: relative;
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-lg);
-    padding: 2rem;
+    padding: 1.5rem;
     margin: 1.5rem 0;
+    overflow: visible;
+}
+
+.sim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.75rem;
     position: relative;
-    overflow: hidden;
 }
 
-.sim-node {
-    width: 140px;
-    padding: 1rem;
+.sim-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-md);
+    padding: 0.8rem;
     text-align: center;
-    box-shadow: var(--shadow-premium);
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.sim-debtor-node {
-    border: 1px solid var(--color-debtor);
-    background: rgba(244, 63, 94, 0.05);
+.sim-card:hover {
+    transform: translateY(-2px);
 }
 
-.sim-creditor-node {
-    border: 1px solid var(--color-creditor);
-    background: rgba(16, 185, 129, 0.05);
-}
-
-.sim-node-title {
-    font-size: 0.95rem;
-    font-weight: 700;
+.sim-card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.sim-node-bal {
+.sim-card-val {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 800;
     margin-top: 0.25rem;
 }
 
-.sim-debtor-node .sim-node-bal {
+.sim-card-debtor {
+    border-left: 3px solid var(--color-debtor);
+    background: linear-gradient(to right, rgba(244, 63, 94, 0.02), transparent);
+}
+.sim-card-debtor .sim-card-val {
     color: var(--color-debtor);
 }
 
-.sim-creditor-node .sim-node-bal {
+.sim-card-creditor {
+    border-left: 3px solid var(--color-creditor);
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.02), transparent);
+}
+.sim-card-creditor .sim-card-val {
     color: var(--color-creditor);
 }
 
-.sim-path {
-    flex-grow: 1;
-    margin: 0 1.5rem;
-    position: relative;
-    height: 60px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+.sim-card-settled {
+    border-left: 3px solid var(--color-settled);
+    opacity: 0.5;
+}
+.sim-card-settled .sim-card-val {
+    color: var(--color-settled);
 }
 
-.sim-line {
-    position: absolute;
-    width: 100%;
-    height: 2px;
-    background: repeating-linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1) 8px, transparent 8px, transparent 16px);
-    top: 50%;
-    transform: translateY(-50%);
+/* Active highlights during simulation */
+.sim-active-debtor {
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.35);
+    border-color: var(--color-debtor);
+    transform: scale(1.05);
+    background: rgba(244, 63, 94, 0.08) !important;
 }
 
-.sim-money {
+.sim-active-creditor {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+    border-color: var(--color-creditor);
+    transform: scale(1.05);
+    background: rgba(16, 185, 129, 0.08) !important;
+}
+
+/* Flying Coin */
+.flying-coin {
     position: absolute;
     font-size: 1.75rem;
-    top: calc(50% - 20px);
-    left: 0%;
-    opacity: 0;
+    z-index: 100;
     pointer-events: none;
-}
-
-.sim-money.animate {
-    animation: flyMoney 1.5s infinite linear;
-}
-
-@keyframes flyMoney {
-    0% { left: 0%; opacity: 0; transform: scale(0.5) rotate(0deg); }
-    10% { opacity: 1; transform: scale(1.2) rotate(10deg); }
-    90% { opacity: 1; transform: scale(1.2) rotate(-10deg); }
-    100% { left: calc(100% - 30px); opacity: 0; transform: scale(0.5) rotate(0deg); }
-}
-
-.sim-amount-label {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid var(--border-color);
-    padding: 0.15rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--accent-color);
-    margin-top: 1.5rem;
-    z-index: 1;
+    transition: all 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+    transform: translate(-50%, -50%);
 }
 
 .sim-explanation {
@@ -695,6 +678,46 @@ body {
     text-align: center;
     color: var(--text-primary);
 }
+
+/* Button Disabled State */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Simulator Card Status Badges */
+.sim-card-status {
+    margin-top: 0.5rem;
+}
+
+.sim-card-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: inline-block;
+}
+
+.settled-badge {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+}
+
+.debtor-badge {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--color-debtor);
+}
+
+.creditor-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--color-creditor);
+}
+
 
 /* Behind the Scenes Log styling */
 .log-container {
