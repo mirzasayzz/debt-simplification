@@ -318,20 +318,20 @@ function simplifyDebts() {
     let simplifiedTransfers = [];
 
     if (N <= 20) {
-        logStep(`Active member count N = ${N} (&le; 20). Running mathematical-optimal Bitmask DP.`, 'highlight');
+        logStep(`Active member count is N = ${N}. Running optimal grouping solver.`, 'highlight');
         
         const numStates = 1 << N;
         const sum = new Array(numStates).fill(0);
         const dp = new Array(numStates).fill(0);
 
-        logStep(`Precomputing sum of balances for all 2^N = ${numStates} possible combinations (bitmasks)...`, 'info');
+        logStep(`Scanning balance combinations to find independent groups...`, 'info');
         // Precompute subset sums
         for (let mask = 1; mask < numStates; ++mask) {
             const i = 31 - Math.clz32(mask & -mask);
             sum[mask] = sum[mask ^ (1 << i)] + activeBalances[i];
         }
 
-        logStep(`Computing DP values: Find the maximum number of zero-sum subsets...`, 'info');
+        logStep(`Calculating maximum possible zero-sum subsets...`, 'info');
         // Compute DP
         for (let mask = 1; mask < numStates; ++mask) {
             let maxSub = 0;
@@ -347,10 +347,10 @@ function simplifyDebts() {
         }
 
         const maxZeroSumSubsets = dp[numStates - 1];
-        logStep(`DP execution completed. Maximum number of independent zero-sum groups: ${maxZeroSumSubsets}`, 'success');
-        logStep(`Optimal transfers count will be: N - MaxGroups = ${N} - ${maxZeroSumSubsets} = ${N - maxZeroSumSubsets}`, 'highlight');
+        logStep(`Found ${maxZeroSumSubsets} independent settle groups.`, 'success');
+        logStep(`Transactions needed: N - Groups = ${N} - ${maxZeroSumSubsets} = ${N - maxZeroSumSubsets}`, 'highlight');
 
-        logStep(`Step 4: Reconstructing the independent zero-sum groups from DP transitions...`, 'highlight');
+        logStep(`Step 4: Isolating the independent groups...`, 'highlight');
         let activeMask = numStates - 1;
         const components = [];
 
@@ -363,7 +363,7 @@ function simplifyDebts() {
                     }
                 }
                 components.push(comp);
-                logStep(`  - Isolated Group: [${comp.map(idx => activeNames[idx]).join(', ')}] (sum is exactly 0)`, 'code');
+                logStep(`  - Settle Group: [${comp.map(idx => activeNames[idx]).join(', ')}] (sum is 0)`, 'code');
                 break;
             }
 
@@ -377,7 +377,7 @@ function simplifyDebts() {
                         }
                     }
                     components.push(comp);
-                    logStep(`  - Isolated Group: [${comp.map(idx => activeNames[idx]).join(', ')}] (sum is exactly 0)`, 'code');
+                    logStep(`  - Settle Group: [${comp.map(idx => activeNames[idx]).join(', ')}] (sum is 0)`, 'code');
                     activeMask ^= T;
                     found = true;
                     break;
@@ -392,7 +392,7 @@ function simplifyDebts() {
                     }
                 }
                 components.push(comp);
-                logStep(`  - Isolated Group: [${comp.map(idx => activeNames[idx]).join(', ')}] (sum is exactly 0)`, 'code');
+                logStep(`  - Settle Group: [${comp.map(idx => activeNames[idx]).join(', ')}] (sum is 0)`, 'code');
                 break;
             }
         }
@@ -401,12 +401,12 @@ function simplifyDebts() {
         renderComponentsUI(components, activeNames);
 
         // Settle components sequentially
-        logStep(`Step 5: Settling each group sequentially using (K - 1) transfers for size K...`, 'highlight');
+        logStep(`Step 5: Settling each group (K members need K-1 transfers)...`, 'highlight');
         components.forEach((comp, compIdx) => {
             const K = comp.length;
             if (K <= 1) return;
 
-            logStep(`Settle Group #${compIdx + 1} (${comp.map(idx => activeNames[idx]).join(', ')}):`, 'highlight');
+            logStep(`Settling Group #${compIdx + 1} (${comp.map(idx => activeNames[idx]).join(', ')}):`, 'highlight');
             const compBalances = comp.map(idx => activeBalances[idx]);
 
             for (let i = 0; i < K - 1; ++i) {
@@ -441,12 +441,12 @@ function simplifyDebts() {
         });
 
     } else {
-        logStep(`Active member count N = ${N} (> 20). Running Greedy Heap-based fallback solver.`, 'highlight');
+        logStep(`Active members N = ${N} (> 20). Running greedy settlement solver.`, 'highlight');
         
         const maxHeap = new PriorityQueue((a, b) => a.val > b.val);
         const minHeap = new PriorityQueue((a, b) => a.val < b.val);
 
-        logStep(`Pushing creditors to Max-Heap and debtors to Min-Heap...`, 'info');
+        logStep(`Loading creditors and debtors into priority queues...`, 'info');
         for (let i = 0; i < N; ++i) {
             if (activeBalances[i] > 0) {
                 maxHeap.push({ val: activeBalances[i], idx: i });
