@@ -92,6 +92,28 @@ const componentsContainer = document.getElementById('components-container');
 const sectionLog = document.getElementById('section-log');
 const logContainer = document.getElementById('log-container');
 
+// Simulator DOM Elements
+const sectionSimulator = document.getElementById('section-simulator');
+const btnSimPrev = document.getElementById('btn-sim-prev');
+const btnSimPlay = document.getElementById('btn-sim-play');
+const btnSimNext = document.getElementById('btn-sim-next');
+const btnSimReset = document.getElementById('btn-sim-reset');
+const simStepText = document.getElementById('sim-step-text');
+const simDebtorName = document.getElementById('sim-debtor-name');
+const simDebtorBal = document.getElementById('sim-debtor-bal');
+const simCreditorName = document.getElementById('sim-creditor-name');
+const simCreditorBal = document.getElementById('sim-creditor-bal');
+const simMoneyIcon = document.getElementById('sim-money-icon');
+const simAmountLabel = document.getElementById('sim-amount-label');
+const simExplanation = document.getElementById('sim-explanation');
+
+// Simulator State
+let simTransfers = [];
+let simActiveNames = [];
+let simActiveBalances = [];
+let simCurrentStep = 0;
+let simPlayInterval = null;
+
 const sectionTransfers = document.getElementById('section-transfers');
 const transfersList = document.getElementById('transfers-list');
 const transfersBadge = document.getElementById('transfers-badge');
@@ -205,7 +227,9 @@ function hideResultSections() {
     sectionBalances.style.display = 'none';
     sectionComponents.style.display = 'none';
     sectionLog.style.display = 'none';
+    sectionSimulator.style.display = 'none';
     sectionTransfers.style.display = 'none';
+    stopSimPlayback();
 }
 
 function logStep(message, type = 'info') {
@@ -478,6 +502,7 @@ function simplifyDebts() {
 
     sectionLog.style.display = 'block';
     renderTransfersUI(simplifiedTransfers);
+    initSimulator(simplifiedTransfers, activeNames, activeBalances);
 }
 
 function renderBalancesUI(names, balances) {
@@ -545,3 +570,139 @@ function renderTransfersUI(transfers) {
 
     sectionTransfers.style.display = 'block';
 }
+
+function initSimulator(transfers, activeNames, activeBalances) {
+    simTransfers = transfers;
+    simActiveNames = [...activeNames];
+    simActiveBalances = [...activeBalances];
+    simCurrentStep = 0;
+    
+    stopSimPlayback();
+    btnSimPlay.textContent = 'Play';
+
+    if (transfers.length === 0) {
+        sectionSimulator.style.display = 'none';
+        return;
+    }
+
+    sectionSimulator.style.display = 'block';
+    renderSimulationStep();
+}
+
+function renderSimulationStep() {
+    if (simTransfers.length === 0) return;
+    
+    const currentStep = simCurrentStep;
+    simStepText.textContent = `Step ${currentStep + 1} of ${simTransfers.length}`;
+
+    // Restart coin animation
+    simMoneyIcon.classList.remove('animate');
+    void simMoneyIcon.offsetWidth; // Force reflow
+    simMoneyIcon.classList.add('animate');
+
+    const tx = simTransfers[currentStep];
+    
+    // Calculate balances BEFORE this transaction
+    const tempBals = [...simActiveBalances];
+    for (let j = 0; j < currentStep; ++j) {
+        const prevTx = simTransfers[j];
+        const prevDebtorIdx = simActiveNames.indexOf(prevTx.from);
+        const prevCreditorIdx = simActiveNames.indexOf(prevTx.to);
+        tempBals[prevDebtorIdx] += prevTx.amount;
+        tempBals[prevCreditorIdx] -= prevTx.amount;
+    }
+
+    const debtorIdx = simActiveNames.indexOf(tx.from);
+    const creditorIdx = simActiveNames.indexOf(tx.to);
+
+    const balDebtorBefore = tempBals[debtorIdx];
+    const balCreditorBefore = tempBals[creditorIdx];
+
+    const balDebtorAfter = balDebtorBefore + tx.amount;
+    const balCreditorAfter = balCreditorBefore - tx.amount;
+
+    // Display values before payment
+    simDebtorName.textContent = tx.from;
+    simDebtorBal.textContent = `₹${balDebtorBefore}`;
+    
+    simCreditorName.textContent = tx.to;
+    simCreditorBal.textContent = `₹${balCreditorBefore}`;
+    
+    simAmountLabel.textContent = `₹${tx.amount}`;
+    
+    simExplanation.innerHTML = `<span class="transfer-payee">${tx.from}</span> is transferring <span class="transfer-val">₹${tx.amount}</span> to <span class="transfer-rec">${tx.to}</span>...`;
+
+    // Dynamic balance updates half-way through the animation (750ms)
+    setTimeout(() => {
+        if (simCurrentStep === currentStep) {
+            simDebtorBal.textContent = `₹${balDebtorAfter}`;
+            simCreditorBal.textContent = `₹${balCreditorAfter}`;
+            
+            let statusText = '';
+            if (balDebtorAfter === 0) {
+                statusText += `<span class="transfer-payee">${tx.from}</span> is now <strong>fully settled</strong>. `;
+            } else {
+                statusText += `<span class="transfer-payee">${tx.from}</span>'s remaining debt is reduced to ₹${-balDebtorAfter}. `;
+            }
+
+            if (balCreditorAfter === 0) {
+                statusText += `<span class="transfer-rec">${tx.to}</span> is now <strong>fully paid</strong>.`;
+            } else {
+                statusText += `<span class="transfer-rec">${tx.to}</span> is owed ₹${balCreditorAfter} more.`;
+            }
+
+            simExplanation.innerHTML = `<span class="transfer-payee">${tx.from}</span> paid <span class="transfer-rec">${tx.to}</span> <span class="transfer-val">₹${tx.amount}</span>!<br><small>${statusText}</small>`;
+        }
+    }, 750);
+}
+
+function startSimPlayback() {
+    if (simPlayInterval) return;
+    btnSimPlay.textContent = 'Pause';
+    btnSimPlay.classList.remove('btn-primary');
+    btnSimPlay.classList.add('btn-secondary');
+    
+    // Play immediately, then every 2.5s
+    renderSimulationStep();
+    simPlayInterval = setInterval(() => {
+        simCurrentStep = (simCurrentStep + 1) % simTransfers.length;
+        renderSimulationStep();
+    }, 2500);
+}
+
+function stopSimPlayback() {
+    if (simPlayInterval) {
+        clearInterval(simPlayInterval);
+        simPlayInterval = null;
+    }
+    btnSimPlay.textContent = 'Play';
+    btnSimPlay.classList.remove('btn-secondary');
+    btnSimPlay.classList.add('btn-primary');
+}
+
+// Event Listeners for Simulator Controls
+btnSimPlay.addEventListener('click', () => {
+    if (simPlayInterval) {
+        stopSimPlayback();
+    } else {
+        startSimPlayback();
+    }
+});
+
+btnSimNext.addEventListener('click', () => {
+    stopSimPlayback();
+    simCurrentStep = (simCurrentStep + 1) % simTransfers.length;
+    renderSimulationStep();
+});
+
+btnSimPrev.addEventListener('click', () => {
+    stopSimPlayback();
+    simCurrentStep = (simCurrentStep - 1 + simTransfers.length) % simTransfers.length;
+    renderSimulationStep();
+});
+
+btnSimReset.addEventListener('click', () => {
+    stopSimPlayback();
+    simCurrentStep = 0;
+    renderSimulationStep();
+});

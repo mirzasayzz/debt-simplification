@@ -573,6 +573,129 @@ body {
     background: rgba(15, 23, 42, 0.2);
 }
 
+/* Simulator Styles */
+.sim-controls {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.simulator-view {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.sim-node {
+    width: 140px;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+    box-shadow: var(--shadow-premium);
+    transition: all 0.3s ease;
+}
+
+.sim-debtor-node {
+    border: 1px solid var(--color-debtor);
+    background: rgba(244, 63, 94, 0.05);
+}
+
+.sim-creditor-node {
+    border: 1px solid var(--color-creditor);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.sim-node-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sim-node-bal {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-top: 0.25rem;
+}
+
+.sim-debtor-node .sim-node-bal {
+    color: var(--color-debtor);
+}
+
+.sim-creditor-node .sim-node-bal {
+    color: var(--color-creditor);
+}
+
+.sim-path {
+    flex-grow: 1;
+    margin: 0 1.5rem;
+    position: relative;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.sim-line {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: repeating-linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1) 8px, transparent 8px, transparent 16px);
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.sim-money {
+    position: absolute;
+    font-size: 1.75rem;
+    top: calc(50% - 20px);
+    left: 0%;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sim-money.animate {
+    animation: flyMoney 1.5s infinite linear;
+}
+
+@keyframes flyMoney {
+    0% { left: 0%; opacity: 0; transform: scale(0.5) rotate(0deg); }
+    10% { opacity: 1; transform: scale(1.2) rotate(10deg); }
+    90% { opacity: 1; transform: scale(1.2) rotate(-10deg); }
+    100% { left: calc(100% - 30px); opacity: 0; transform: scale(0.5) rotate(0deg); }
+}
+
+.sim-amount-label {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
+    padding: 0.15rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-top: 1.5rem;
+    z-index: 1;
+}
+
+.sim-explanation {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--text-primary);
+}
+
 /* Behind the Scenes Log styling */
 .log-container {
     max-height: 250px;
