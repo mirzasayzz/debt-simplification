@@ -104,23 +104,9 @@
                 <p class="card-desc" id="sim-step-text">Step 0 of 0</p>
                 
                 <div class="simulator-view">
-                    <!-- Left: Debtor -->
-                    <div class="sim-node sim-debtor-node" id="sim-debtor-card">
-                        <div class="sim-node-title" id="sim-debtor-name">-</div>
-                        <div class="sim-node-bal" id="sim-debtor-bal">-</div>
-                    </div>
-                    
-                    <!-- Middle: Path -->
-                    <div class="sim-path">
-                        <div class="sim-line"></div>
-                        <div class="sim-money" id="sim-money-icon">💸</div>
-                        <div class="sim-amount-label" id="sim-amount-label">₹0</div>
-                    </div>
-                    
-                    <!-- Right: Creditor -->
-                    <div class="sim-node sim-creditor-node" id="sim-creditor-card">
-                        <div class="sim-node-title" id="sim-creditor-name">-</div>
-                        <div class="sim-node-bal" id="sim-creditor-bal">-</div>
+                    <!-- The Grid of all active balances in their current simulation state -->
+                    <div class="sim-grid" id="sim-grid">
+                        <!-- Dynamically filled with balance cards -->
                     </div>
                 </div>
                 <div class="sim-explanation" id="sim-explanation">
