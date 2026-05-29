@@ -1,0 +1,11 @@
+# Build artifacts
+*.o
+*.d
+build/
+bin/
+minimize_cash_flow
+test_runner
+
+# OS files
+.DS_Store
+Thumbs.db
