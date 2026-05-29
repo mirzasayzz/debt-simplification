@@ -252,8 +252,8 @@ def generate_report():
     print_code_lines(pdf, js_code)
     
     # Output to file
-    pdf.output("Splitwise_Debt_Simplifier_Report.pdf")
-    print("Report PDF generated successfully as 'Splitwise_Debt_Simplifier_Report.pdf'.")
+    pdf.output("dsa_project.pdf")
+    print("Report PDF generated successfully as 'dsa_project.pdf'.")
 
 if __name__ == "__main__":
     generate_report()
